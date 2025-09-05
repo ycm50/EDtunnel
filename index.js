@@ -13,21 +13,21 @@ import { connect } from 'cloudflare:sockets';
 let userID = 'd342d11e-d424-4583-b36e-524ab1f0afa4';
 
 /**
- * Array of proxy server addresses with ports
+ * Array of pxy server addresses with ports
  * Format: ['hostname:port', 'hostname:port']
  */
 const pips = ['cdn.xn--b6gac.eu.org:443', 'cdn-all.xn--b6gac.eu.org:443'];
 
-// Randomly select a proxy server from the pool
+// Randomly select a pxy server from the pool
 let pip = pips[Math.floor(Math.random() * pips.length)];
-let proxyPort = pip.includes(':') ? pip.split(':')[1] : '443';
+let pport = pip.includes(':') ? pip.split(':')[1] : '443';
 
 // Alternative configurations:
-// Single proxy IP: let pip = 'cdn.xn--b6gac.eu.org';
+// Single pxy IP: let pip = 'cdn.xn--b6gac.eu.org';
 // IPv6 example: let pip = "[2a01:4f8:c2c:123f:64:5:6810:c55a]"
 
 /**
- * SOCKS5 proxy configuration
+ * SOCKS5 pxy configuration
  * Format: 'username:password@host:port' or 'host:port'
  */
 let socks5Address = '';
@@ -52,7 +52,7 @@ let enableSocks = false;
  * @param {Object} env - Environment variables containing configuration
  * @param {string} env.UUID - User ID for authentication
  * @param {string} env.PROXYIP - Proxy server IP address
- * @param {string} env.SOCKS5 - SOCKS5 proxy configuration
+ * @param {string} env.SOCKS5 - SOCKS5 pxy configuration
  * @param {string} env.SOCKS5_RELAY - SOCKS5 relay mode flag
  * @returns {Promise<Response>} Response object
  */
@@ -74,32 +74,32 @@ export default {
 				socks5Address: SOCKS5 || socks5Address,
 				socks5Relay: SOCKS5_RELAY === 'true' || socks5Relay,
 				pip: null,
-				proxyPort: null,
+				pport: null,
 				enableSocks: false,
 				parsedSocks5Address: {}
 			};
 
 			// 获取正常URL参数
-			let urlPROXYIP = url.searchParams.get('proxyip');
+			let urlPROXYIP = url.searchParams.get('pxyip');
 			let urlSOCKS5 = url.searchParams.get('socks5');
 			let urlSOCKS5_RELAY = url.searchParams.get('socks5_relay');
 
 			// 检查编码在路径中的参数
 			if (!urlPROXYIP && !urlSOCKS5 && !urlSOCKS5_RELAY) {
 				const encodedParams = parseEncodedQueryParams(url.pathname);
-				urlPROXYIP = urlPROXYIP || encodedParams.proxyip;
+				urlPROXYIP = urlPROXYIP || encodedParams.pxyip;
 				urlSOCKS5 = urlSOCKS5 || encodedParams.socks5;
 				urlSOCKS5_RELAY = urlSOCKS5_RELAY || encodedParams.socks5_relay;
 			}
 
-			// 验证proxyip格式
+			// 验证pxyip格式
 			if (urlPROXYIP) {
 				// 验证格式: domain:port 或 ip:port，支持逗号分隔
-				const proxyPattern = /^([a-zA-Z0-9][-a-zA-Z0-9.]*(\.[a-zA-Z0-9][-a-zA-Z0-9.]*)+|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\[[0-9a-fA-F:]+\]):\d{1,5}$/;
-				const proxyAddresses = urlPROXYIP.split(',').map(addr => addr.trim());
-				const isValid = proxyAddresses.every(addr => proxyPattern.test(addr));
+				const pxyPattern = /^([a-zA-Z0-9][-a-zA-Z0-9.]*(\.[a-zA-Z0-9][-a-zA-Z0-9.]*)+|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\[[0-9a-fA-F:]+\]):\d{1,5}$/;
+				const pxyAddresses = urlPROXYIP.split(',').map(addr => addr.trim());
+				const isValid = pxyAddresses.every(addr => pxyPattern.test(addr));
 				if (!isValid) {
-					console.warn('无效的proxyip格式:', urlPROXYIP);
+					console.warn('无效的pxyip格式:', urlPROXYIP);
 					urlPROXYIP = null;
 				}
 			}
@@ -123,13 +123,13 @@ export default {
 			// 记录参数值，用于调试
 			console.log('配置参数:', requestConfig.userID, requestConfig.socks5Address, requestConfig.socks5Relay, urlPROXYIP);
 
-			// Handle proxy configuration for the current request
-			const proxyConfig = handleProxyConfig(urlPROXYIP || PROXYIP);
-			requestConfig.pip = proxyConfig.ip;
-			requestConfig.proxyPort = proxyConfig.port;
+			// Handle pxy configuration for the current request
+			const pxyConfig = handleProxyConfig(urlPROXYIP || PROXYIP);
+			requestConfig.pip = pxyConfig.ip;
+			requestConfig.pport = pxyConfig.port;
 
 			// 记录最终使用的代理设置
-			console.log('使用代理:', requestConfig.pip, requestConfig.proxyPort);
+			console.log('使用代理:', requestConfig.pip, requestConfig.pport);
 
 			if (requestConfig.socks5Address) {
 				try {
@@ -165,10 +165,10 @@ export default {
 				if (matchingUserID) {
 					if (url.pathname === `/${matchingUserID}` || url.pathname === `/sub/${matchingUserID}`) {
 						const isSubscription = url.pathname.startsWith('/sub/');
-						const proxyAddresses = PROXYIP ? PROXYIP.split(',').map(addr => addr.trim()) : requestConfig.pip;
+						const pxyAddresses = PROXYIP ? PROXYIP.split(',').map(addr => addr.trim()) : requestConfig.pip;
 						const content = isSubscription ?
-							GenSub(matchingUserID, host, proxyAddresses) :
-							getConfig(matchingUserID, host, proxyAddresses);
+							GenSub(matchingUserID, host, pxyAddresses) :
+							getConfig(matchingUserID, host, pxyAddresses);
 
 						return new Response(content, {
 							status: 200,
@@ -461,7 +461,7 @@ async function ProtocolOverWSHandler(request, config = null) {
 			socks5Address,
 			socks5Relay,
 			pip,
-			proxyPort,
+			pport,
 			enableSocks,
 			parsedSocks5Address
 		};
@@ -524,7 +524,7 @@ async function ProtocolOverWSHandler(request, config = null) {
 				if (portRemote === 53) {
 					isDns = true;
 				} else {
-					throw new Error('UDP proxy is only enabled for DNS (port 53)');
+					throw new Error('UDP pxy is only enabled for DNS (port 53)');
 				}
 				return; // Early return after setting isDns or throwing error
 			}
@@ -555,7 +555,7 @@ async function ProtocolOverWSHandler(request, config = null) {
 }
 
 /**
- * Handles outbound TCP connections for the proxy.
+ * Handles outbound TCP connections for the pxy.
  * Establishes connection to remote server and manages data flow.
  * @param {Socket} remoteSocket - Remote socket connection
  * @param {string} addressType - Type of address (IPv4/IPv6)
@@ -575,7 +575,7 @@ async function HandleTCPOutBound(remoteSocket, addressType, addressRemote, portR
 			socks5Address,
 			socks5Relay,
 			pip,
-			proxyPort,
+			pport,
 			enableSocks,
 			parsedSocks5Address
 		};
@@ -607,7 +607,7 @@ async function HandleTCPOutBound(remoteSocket, addressType, addressRemote, portR
 		if (config.enableSocks) {
 			tcpSocket = await connectAndWrite(addressRemote, portRemote, true);
 		} else {
-			tcpSocket = await connectAndWrite(config.pip || addressRemote, config.proxyPort || portRemote, false);
+			tcpSocket = await connectAndWrite(config.pip || addressRemote, config.pport || portRemote, false);
 		}
 		// no matter retry success or not, close websocket
 		tcpSocket.closed.catch(error => {
@@ -949,7 +949,7 @@ async function handleDNSQuery(udpChunk, webSocket, protocolResponseHeader, log) 
 }
 
 /**
- * Establishes SOCKS5 proxy connection.
+ * Establishes SOCKS5 pxy connection.
  * @param {number} addressType - Type of address
  * @param {string} addressRemote - Remote address
  * @param {number} portRemote - Remote port
@@ -1310,7 +1310,7 @@ function getConfig(userIDs, hostName, pip) {
 
 	const configOutput = userIDArray.map((userID) => {
 		const protocolMain = atob(pt) + '://' + userID + atob(at) + hostName + ":443" + commonUrlPart;
-		const protocolSec = atob(pt) + '://' + userID + atob(at) + pip[0].split(':')[0] + ":" + proxyPort + commonUrlPart;
+		const protocolSec = atob(pt) + '://' + userID + atob(at) + pip[0].split(':')[0] + ":" + pport + commonUrlPart;
 		return `
       <div class="container config-item">
         <h2>UUID: ${userID}</h2>
@@ -1322,16 +1322,16 @@ function getConfig(userIDs, hostName, pip) {
         
         <h3>Best IP Configuration</h3>
         <div class="input-group mb-3">
-          <select class="form-select" id="proxySelect" onchange="updateProxyConfig()">
+          <select class="form-select" id="pxySelect" onchange="updateProxyConfig()">
             ${typeof pip === 'string' ?
 				`<option value="${pip}">${pip}</option>` :
-				Array.from(pip).map(proxy => `<option value="${proxy}">${proxy}</option>`).join('')}
+				Array.from(pip).map(pxy => `<option value="${pxy}">${pxy}</option>`).join('')}
           </select>
         </div>
 		<br>
         <div class="code-container">
-          <pre><code id="proxyConfig">${protocolSec}</code></pre>
-          <button class="btn copy-btn" onclick='copyToClipboard(document.getElementById("proxyConfig").textContent)'><i class="fas fa-copy"></i> Copy</button>
+          <pre><code id="pxyConfig">${protocolSec}</code></pre>
+          <button class="btn copy-btn" onclick='copyToClipboard(document.getElementById("pxyConfig").textContent)'><i class="fas fa-copy"></i> Copy</button>
         </div>
       </div>
     `;
@@ -1360,11 +1360,11 @@ function getConfig(userIDs, hostName, pip) {
       }
 
       function updateProxyConfig() {
-        const select = document.getElementById('proxySelect');
-        const proxyValue = select.value;
-        const [host, port] = proxyValue.split(':');
+        const select = document.getElementById('pxySelect');
+        const pxyValue = select.value;
+        const [host, port] = pxyValue.split(':');
         const protocolSec = atob(pt) + '://' + userIDArray[0] + atob(at) + host + ":" + port + commonUrlPart;
-        document.getElementById("proxyConfig").textContent = protocolSec;
+        document.getElementById("pxyConfig").textContent = protocolSec;
       }
     </script>
   </body>
@@ -1449,11 +1449,11 @@ function GenSub(userID_path, hostname, pip) {
 			});
 		});
 
-		// Generate proxy HTTPS URLs
-		pipArray.forEach((proxyAddr) => {
-			const [proxyHost, proxyPort = '443'] = proxyAddr.split(':');
-			const urlPart = `${hostname.split('.')[0]}-${proxyHost}-HTTPS-${proxyPort}`;
-			const secondaryProtocolHttps = atob(pt) + '://' + userID + atob(at) + proxyHost + ':' + proxyPort + commonUrlPartHttps + urlPart + '-' + atob(ed);
+		// Generate pxy HTTPS URLs
+		pipArray.forEach((pxyAddr) => {
+			const [pxyHost, pport = '443'] = pxyAddr.split(':');
+			const urlPart = `${hostname.split('.')[0]}-${pxyHost}-HTTPS-${pport}`;
+			const secondaryProtocolHttps = atob(pt) + '://' + userID + atob(at) + pxyHost + ':' + pport + commonUrlPartHttps + urlPart + '-' + atob(ed);
 			allUrls.push(secondaryProtocolHttps);
 		});
 
@@ -1465,14 +1465,14 @@ function GenSub(userID_path, hostname, pip) {
 }
 
 /**
- * Handles proxy configuration and returns standardized proxy settings
+ * Handles pxy configuration and returns standardized pxy settings
  * @param {string} PROXYIP - Proxy IP configuration from environment
- * @returns {{ip: string, port: string}} Standardized proxy configuration
+ * @returns {{ip: string, port: string}} Standardized pxy configuration
  */
 function handleProxyConfig(PROXYIP) {
 	if (PROXYIP) {
-		const proxyAddresses = PROXYIP.split(',').map(addr => addr.trim());
-		const selectedProxy = selectRandomAddress(proxyAddresses);
+		const pxyAddresses = PROXYIP.split(',').map(addr => addr.trim());
+		const selectedProxy = selectRandomAddress(pxyAddresses);
 		const [ip, port = '443'] = selectedProxy.split(':');
 		return { ip, port };
 	} else {
