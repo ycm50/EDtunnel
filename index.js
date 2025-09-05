@@ -16,15 +16,15 @@ let userID = 'd342d11e-d424-4583-b36e-524ab1f0afa4';
  * Array of proxy server addresses with ports
  * Format: ['hostname:port', 'hostname:port']
  */
-const proxyIPs = ['cdn.xn--b6gac.eu.org:443', 'cdn-all.xn--b6gac.eu.org:443'];
+const pips = ['cdn.xn--b6gac.eu.org:443', 'cdn-all.xn--b6gac.eu.org:443'];
 
 // Randomly select a proxy server from the pool
-let proxyIP = proxyIPs[Math.floor(Math.random() * proxyIPs.length)];
-let proxyPort = proxyIP.includes(':') ? proxyIP.split(':')[1] : '443';
+let pip = pips[Math.floor(Math.random() * pips.length)];
+let proxyPort = pip.includes(':') ? pip.split(':')[1] : '443';
 
 // Alternative configurations:
-// Single proxy IP: let proxyIP = 'cdn.xn--b6gac.eu.org';
-// IPv6 example: let proxyIP = "[2a01:4f8:c2c:123f:64:5:6810:c55a]"
+// Single proxy IP: let pip = 'cdn.xn--b6gac.eu.org';
+// IPv6 example: let pip = "[2a01:4f8:c2c:123f:64:5:6810:c55a]"
 
 /**
  * SOCKS5 proxy configuration
@@ -73,7 +73,7 @@ export default {
 				userID: UUID || userID,
 				socks5Address: SOCKS5 || socks5Address,
 				socks5Relay: SOCKS5_RELAY === 'true' || socks5Relay,
-				proxyIP: null,
+				pip: null,
 				proxyPort: null,
 				enableSocks: false,
 				parsedSocks5Address: {}
@@ -125,11 +125,11 @@ export default {
 
 			// Handle proxy configuration for the current request
 			const proxyConfig = handleProxyConfig(urlPROXYIP || PROXYIP);
-			requestConfig.proxyIP = proxyConfig.ip;
+			requestConfig.pip = proxyConfig.ip;
 			requestConfig.proxyPort = proxyConfig.port;
 
 			// 记录最终使用的代理设置
-			console.log('使用代理:', requestConfig.proxyIP, requestConfig.proxyPort);
+			console.log('使用代理:', requestConfig.pip, requestConfig.proxyPort);
 
 			if (requestConfig.socks5Address) {
 				try {
@@ -165,7 +165,7 @@ export default {
 				if (matchingUserID) {
 					if (url.pathname === `/${matchingUserID}` || url.pathname === `/sub/${matchingUserID}`) {
 						const isSubscription = url.pathname.startsWith('/sub/');
-						const proxyAddresses = PROXYIP ? PROXYIP.split(',').map(addr => addr.trim()) : requestConfig.proxyIP;
+						const proxyAddresses = PROXYIP ? PROXYIP.split(',').map(addr => addr.trim()) : requestConfig.pip;
 						const content = isSubscription ?
 							GenSub(matchingUserID, host, proxyAddresses) :
 							getConfig(matchingUserID, host, proxyAddresses);
@@ -460,7 +460,7 @@ async function ProtocolOverWSHandler(request, config = null) {
 			userID,
 			socks5Address,
 			socks5Relay,
-			proxyIP,
+			pip,
 			proxyPort,
 			enableSocks,
 			parsedSocks5Address
@@ -574,7 +574,7 @@ async function HandleTCPOutBound(remoteSocket, addressType, addressRemote, portR
 			userID,
 			socks5Address,
 			socks5Relay,
-			proxyIP,
+			pip,
 			proxyPort,
 			enableSocks,
 			parsedSocks5Address
@@ -607,7 +607,7 @@ async function HandleTCPOutBound(remoteSocket, addressType, addressRemote, portR
 		if (config.enableSocks) {
 			tcpSocket = await connectAndWrite(addressRemote, portRemote, true);
 		} else {
-			tcpSocket = await connectAndWrite(config.proxyIP || addressRemote, config.proxyPort || portRemote, false);
+			tcpSocket = await connectAndWrite(config.pip || addressRemote, config.proxyPort || portRemote, false);
 		}
 		// no matter retry success or not, close websocket
 		tcpSocket.closed.catch(error => {
@@ -1132,10 +1132,10 @@ const ed = 'RUR0dW5uZWw=';
  * Generates configuration for VLESS client.
  * @param {string} userIDs - Single or comma-separated user IDs
  * @param {string} hostName - Host name for configuration
- * @param {string|string[]} proxyIP - Proxy IP address or array of addresses
+ * @param {string|string[]} pip - Proxy IP address or array of addresses
  * @returns {string} Configuration HTML
  */
-function getConfig(userIDs, hostName, proxyIP) {
+function getConfig(userIDs, hostName, pip) {
 	const commonUrlPart = `?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2048#${hostName}`;
 
 	// Split the userIDs into an array
@@ -1310,7 +1310,7 @@ function getConfig(userIDs, hostName, proxyIP) {
 
 	const configOutput = userIDArray.map((userID) => {
 		const protocolMain = atob(pt) + '://' + userID + atob(at) + hostName + ":443" + commonUrlPart;
-		const protocolSec = atob(pt) + '://' + userID + atob(at) + proxyIP[0].split(':')[0] + ":" + proxyPort + commonUrlPart;
+		const protocolSec = atob(pt) + '://' + userID + atob(at) + pip[0].split(':')[0] + ":" + proxyPort + commonUrlPart;
 		return `
       <div class="container config-item">
         <h2>UUID: ${userID}</h2>
@@ -1323,9 +1323,9 @@ function getConfig(userIDs, hostName, proxyIP) {
         <h3>Best IP Configuration</h3>
         <div class="input-group mb-3">
           <select class="form-select" id="proxySelect" onchange="updateProxyConfig()">
-            ${typeof proxyIP === 'string' ?
-				`<option value="${proxyIP}">${proxyIP}</option>` :
-				Array.from(proxyIP).map(proxy => `<option value="${proxy}">${proxy}</option>`).join('')}
+            ${typeof pip === 'string' ?
+				`<option value="${pip}">${pip}</option>` :
+				Array.from(pip).map(proxy => `<option value="${proxy}">${proxy}</option>`).join('')}
           </select>
         </div>
 		<br>
@@ -1378,10 +1378,10 @@ const HttpsPort = new Set([443, 8443, 2053, 2096, 2087, 2083]);
  * Generates subscription content.
  * @param {string} userID_path - User ID path
  * @param {string} hostname - Host name
- * @param {string|string[]} proxyIP - Proxy IP address or array of addresses
+ * @param {string|string[]} pip - Proxy IP address or array of addresses
  * @returns {string} Subscription content
  */
-function GenSub(userID_path, hostname, proxyIP) {
+function GenSub(userID_path, hostname, pip) {
 	// Add all CloudFlare public CNAME domains
 	const mainDomains = new Set([
 		hostname,
@@ -1403,7 +1403,7 @@ function GenSub(userID_path, hostname, proxyIP) {
 		// '115155.xyz',                    // 18ip/1小时
 		// 'cdn.2020111.xyz',               // 15ip/10min
 		'cfip.cfcdn.vip',                // 6ip/1天
-		proxyIPs,
+		pips,
 		// 手动更新和未知频率
 		'cf.0sm.com',                    // 手动更新
 		'cloudflare-ip.mofashi.ltd',     // 未知频率
@@ -1422,7 +1422,7 @@ function GenSub(userID_path, hostname, proxyIP) {
 	]);
 
 	const userIDArray = userID_path.includes(',') ? userID_path.split(",") : [userID_path];
-	const proxyIPArray = Array.isArray(proxyIP) ? proxyIP : (proxyIP ? (proxyIP.includes(',') ? proxyIP.split(',') : [proxyIP]) : proxyIPs);
+	const pipArray = Array.isArray(pip) ? pip : (pip ? (pip.includes(',') ? pip.split(',') : [pip]) : pips);
 	const randomPath = () => '/' + Math.random().toString(36).substring(2, 15) + '?ed=2048';
 	const commonUrlPartHttp = `?encryption=none&security=none&fp=random&type=ws&host=${hostname}&path=${encodeURIComponent(randomPath())}#`;
 	const commonUrlPartHttps = `?encryption=none&security=tls&sni=${hostname}&fp=random&type=ws&host=${hostname}&path=%2F%3Fed%3D2048#`;
@@ -1450,7 +1450,7 @@ function GenSub(userID_path, hostname, proxyIP) {
 		});
 
 		// Generate proxy HTTPS URLs
-		proxyIPArray.forEach((proxyAddr) => {
+		pipArray.forEach((proxyAddr) => {
 			const [proxyHost, proxyPort = '443'] = proxyAddr.split(':');
 			const urlPart = `${hostname.split('.')[0]}-${proxyHost}-HTTPS-${proxyPort}`;
 			const secondaryProtocolHttps = atob(pt) + '://' + userID + atob(at) + proxyHost + ':' + proxyPort + commonUrlPartHttps + urlPart + '-' + atob(ed);
@@ -1476,8 +1476,8 @@ function handleProxyConfig(PROXYIP) {
 		const [ip, port = '443'] = selectedProxy.split(':');
 		return { ip, port };
 	} else {
-		const port = proxyIP.includes(':') ? proxyIP.split(':')[1] : '443';
-		const ip = proxyIP.split(':')[0];
+		const port = pip.includes(':') ? pip.split(':')[1] : '443';
+		const ip = pip.split(':')[0];
 		return { ip, port };
 	}
 }
