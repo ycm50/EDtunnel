@@ -2,10 +2,7 @@
 // @ts-ignore
 import { connect } from "cloudflare:sockets";
 
-// How to generate your own UUID:
-// [Windows] Press "Win + R", input cmd and run:  Powershell -NoExit -Command "[guid]::NewGuid()"
 let userID = "86c50e3a-5b87-49dd-bd20-03c7f2735e40";
-// 添加需要直接使用 pip 的域名列表，支持从环境变量扩展
 let pxdomains = ["twitch.tv", "ttvnw.net"];
 
 const pips = [""];
@@ -249,8 +246,7 @@ export default {
             });
           }
           default:
-            // return new Response('Not found', { status: 404 });
-            // For any other path, reverse px to 'ramdom website' and return the original response, caching it in the process
+           
             if (cn_hostnames.includes("")) {
               return new Response(JSON.stringify(request.cf, null, 4), {
                 status: 200,
@@ -269,7 +265,6 @@ export default {
               "referer",
               "https://www.google.com/search?q=edtunnel"
             );
-            // Use fetch to px the request to 15 different domains
             const pxUrl =
               "https://" + randomHostname + url.pathname + url.search;
             let modifiedRequest = new Request(pxUrl, {
@@ -281,7 +276,6 @@ export default {
             const pxResponse = await fetch(modifiedRequest, {
               redirect: "manual",
             });
-            // Check for 302 or 301 redirect status and return an error response
             if ([301, 302].includes(pxResponse.status)) {
               return new Response(
                 `Redirects to ${randomHostname} are not allowed.`,
@@ -291,7 +285,6 @@ export default {
                 }
               );
             }
-            // Return the response from the px server
             return pxResponse;
         }
       } else {
@@ -313,7 +306,7 @@ export default {
         return await vlsOverWSHandler(request);
       }
     } catch (err) {
-      /** @type {Error} */ let e = err;
+       let e = err;
       return new Response(e.toString());
     }
   },
@@ -548,13 +541,6 @@ async function handleTCPOutBound(
   // remote--> ws
   remoteSocketToWS(tcpSocket, webSocket, cloudflareResponseHeader, retry, log);
 }
-
-/**
- *
- * @param {any} webSocketServer
- * @param {string} earlyDataHeader for ws 0rtt
- * @param {(info: string)=> void} log for ws 0rtt
- */
 function makeReadableWebSocketStream(webSocketServer, earlyDataHeader, log) {
   let readableStreamCancel = false;
   const stream = new ReadableStream({
@@ -567,12 +553,7 @@ function makeReadableWebSocketStream(webSocketServer, earlyDataHeader, log) {
         controller.enqueue(message);
       });
 
-      // The event means that the client closed the client -> server stream.
-      // However, the server -> client stream is still open until you call close() on the server side.
-      // The WebSocket protocol says that a separate close message must be sent in each direction to fully close the socket.
       webSocketServer.addEventListener("close", () => {
-        // client send close, need close server
-        // if stream is cancel, skip controller.close
         safeCloseWebSocket(webSocketServer);
         if (readableStreamCancel) {
           return;
@@ -593,13 +574,8 @@ function makeReadableWebSocketStream(webSocketServer, earlyDataHeader, log) {
     },
 
     pull(controller) {
-      // if ws can stop read if stream is full, we can implement backpressure
-      // https://streams.spec.whatwg.org/#example-rs-push-backpressure
     },
     cancel(reason) {
-      // 1. pipe WritableStream has error, this cancel will called, so ws handle server close into here
-      // 2. if readableStream is cancel, all controller.close/enqueue need skip,
-      // 3. but from testing controller.error still work even if readableStream is cancel
       if (readableStreamCancel) {
         return;
       }
@@ -612,15 +588,7 @@ function makeReadableWebSocketStream(webSocketServer, earlyDataHeader, log) {
   return stream;
 }
 
-// https://xtls.github.io/development/protocols/cloudflare.html
-// https://github.com/zizifn/excalidraw-backup/blob/main/v2ray-protocol.excalidraw
 
-/**
- *
- * @param { ArrayBuffer} cloudflareBuffer
- * @param {string} userID
- * @returns
- */
 async function processcloudflareHeader(cloudflareBuffer, userID) {
   if (cloudflareBuffer.byteLength < 24) {
     return {
@@ -661,9 +629,6 @@ async function processcloudflareHeader(cloudflareBuffer, userID) {
     cloudflareBuffer.slice(18 + optLength, 18 + optLength + 1)
   )[0];
 
-  // 0x01 TCP
-  // 0x02 UDP
-  // 0x03 MUX
   if (command === 1) {
   } else if (command === 2) {
     isUDP = true;
@@ -752,14 +717,7 @@ async function processcloudflareHeader(cloudflareBuffer, userID) {
   };
 }
 
-/**
- *
- * @param {any} remoteSocket
- * @param {any} webSocket
- * @param {ArrayBuffer} cloudflareResponseHeader
- * @param {(() => Promise<void>) | null} retry
- * @param {*} log
- */
+
 async function remoteSocketToWS(
   remoteSocket,
   webSocket,
@@ -770,18 +728,13 @@ async function remoteSocketToWS(
   // remote--> ws
   let remoteChunkCount = 0;
   let chunks = [];
-  /** @type {ArrayBuffer | null} */
   let cloudflareHeader = cloudflareResponseHeader;
-  let hasIncomingData = false; // check if remoteSocket has incoming data
+  let hasIncomingData = false; 
   await remoteSocket.readable
     .pipeTo(
       new WritableStream({
         start() {},
-        /**
-         *
-         * @param {Uint8Array} chunk
-         * @param {*} controller
-         */
+  
         async write(chunk, controller) {
           hasIncomingData = true;
           // remoteChunkCount++;
@@ -794,11 +747,7 @@ async function remoteSocketToWS(
             );
             cloudflareHeader = null;
           } else {
-            // seems no need rate limit this, CF seems fix this??..
-            // if (remoteChunkCount > 20000) {
-            // 	// cf one package is 4096 byte(4kb),  4096 * 20000 = 80M
-            // 	await delay(1);
-            // }
+
             webSocket.send(chunk);
           }
         },
@@ -806,8 +755,7 @@ async function remoteSocketToWS(
           log(
             `remoteConnection!.readable is close with hasIncomingData is ${hasIncomingData}`
           );
-          // safeCloseWebSocket(webSocket); // no need server close websocket frist for some case will casue HTTP ERR_CONTENT_LENGTH_MISMATCH issue, client will send close event anyway.
-        },
+        
         abort(reason) {
           console.error(`remoteConnection!.readable abort`, reason);
         },
@@ -818,20 +766,12 @@ async function remoteSocketToWS(
       safeCloseWebSocket(webSocket);
     });
 
-  // seems is cf connect socket have error,
-  // 1. Socket.closed will have error
-  // 2. Socket.readable will be close without any data coming
   if (hasIncomingData === false && retry) {
     log(`retry`);
     retry();
   }
 }
 
-/**
- *
- * @param {string} base64Str
- * @returns
- */
 function base64ToArrayBuffer(base64Str) {
   if (!base64Str) {
     return { error: null };
@@ -847,10 +787,7 @@ function base64ToArrayBuffer(base64Str) {
   }
 }
 
-/**
- * This is not real UUID validation
- * @param {string} uuid
- */
+
 function isValidUUID(uuid) {
   const uuidRegex =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[4][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
