@@ -5,10 +5,10 @@ import { connect } from "cloudflare:sockets";
 // How to generate your own UUID:
 // [Windows] Press "Win + R", input cmd and run:  Powershell -NoExit -Command "[guid]::NewGuid()"
 let userID = "86c50e3a-5b87-49dd-bd20-03c7f2735e40";
-// 添加需要直接使用 proxyip 的域名列表，支持从环境变量扩展
-let proxydomains = ["twitch.tv", "ttvnw.net"];
+// 添加需要直接使用 pip 的域名列表，支持从环境变量扩展
+let pxdomains = ["twitch.tv", "ttvnw.net"];
 
-const proxyIPs = [""];
+const pips = [""];
 const cn_hostnames = [""];
 let CDNIP =
   "\u0077\u0077\u0077\u002e\u0076\u0069\u0073\u0061\u002e\u0063\u006f\u006d\u002e\u0073\u0067";
@@ -59,8 +59,8 @@ let PT11 = "2083";
 let PT12 = "2087";
 let PT13 = "2096";
 
-let proxyIP = proxyIPs[Math.floor(Math.random() * proxyIPs.length)];
-let proxyPort = proxyIP.match(/:(\d+)$/) ? proxyIP.match(/:(\d+)$/)[1] : "443";
+let pip = pips[Math.floor(Math.random() * pips.length)];
+let pxPort = pip.match(/:(\d+)$/) ? pip.match(/:(\d+)$/)[1] : "443";
 const dohURL = "https://cloudflare-dns.com/dns-query";
 if (!isValidUUID(userID)) {
   throw new Error("uuid is not valid");
@@ -97,59 +97,59 @@ function isDomainMatch(hostname, pattern) {
 export default {
   /**
    * @param {any} request
-   * @param {{uuid: string, proxyip: string, cdnip: string, ip1: string, ip2: string, ip3: string, ip4: string, ip5: string, ip6: string, ip7: string, ip8: string, ip9: string, ip10: string, ip11: string, ip12: string, ip13: string, pt1: string, pt2: string, pt3: string, pt4: string, pt5: string, pt6: string, pt7: string, pt8: string, pt9: string, pt10: string, pt11: string, pt12: string, pt13: string, proxydomains: string}} env
+   * @param {{uuid: string, pip: string, cdnip: string, ip1: string, ip2: string, ip3: string, ip4: string, ip5: string, ip6: string, ip7: string, ip8: string, ip9: string, ip10: string, ip11: string, ip12: string, ip13: string, pt1: string, pt2: string, pt3: string, pt4: string, pt5: string, pt6: string, pt7: string, pt8: string, pt9: string, pt10: string, pt11: string, pt12: string, pt13: string, pxdomains: string}} env
    * @param {any} ctx
    * @returns {Promise<Response>}
    */
   async fetch(request, env, ctx) {
     try {
-      const { proxyip } = env;
+      const { pip } = env;
       userID = env.uuid || userID;
 
-      // 处理环境变量中的 proxydomains
-      if (env.proxydomains) {
+      // 处理环境变量中的 pxdomains
+      if (env.pxdomains) {
         try {
           // 尝试解析环境变量中的 JSON 数组
-          const envDomains = JSON.parse(env.proxydomains);
+          const envDomains = JSON.parse(env.pxdomains);
           if (Array.isArray(envDomains)) {
             // 合并环境变量中的域名和默认域名，去重
-            proxydomains = [...new Set([...proxydomains, ...envDomains])];
+            pxdomains = [...new Set([...pxdomains, ...envDomains])];
           }
         } catch (e) {
           // 如果不是 JSON 数组，尝试按逗号分割
-          const envDomains = env.proxydomains
+          const envDomains = env.pxdomains
             .split(",")
             .map((d) => d.trim())
             .filter((d) => d);
-          proxydomains = [...new Set([...proxydomains, ...envDomains])];
+          pxdomains = [...new Set([...pxdomains, ...envDomains])];
         }
       }
 
-      if (proxyip) {
-        if (proxyip.includes("]:")) {
-          let lastColonIndex = proxyip.lastIndexOf(":");
-          proxyPort = proxyip.slice(lastColonIndex + 1);
-          proxyIP = proxyip.slice(0, lastColonIndex);
-        } else if (!proxyip.includes("]:") && !proxyip.includes("]")) {
-          [proxyIP, proxyPort = "443"] = proxyip.split(":");
+      if (pip) {
+        if (pip.includes("]:")) {
+          let lastColonIndex = pip.lastIndexOf(":");
+          pxPort = pip.slice(lastColonIndex + 1);
+          pip = pip.slice(0, lastColonIndex);
+        } else if (!pip.includes("]:") && !pip.includes("]")) {
+          [pip, pxPort = "443"] = pip.split(":");
         } else {
-          proxyPort = "443";
-          proxyIP = proxyip;
+          pxPort = "443";
+          pip = pip;
         }
       } else {
-        if (proxyIP.includes("]:")) {
-          let lastColonIndex = proxyIP.lastIndexOf(":");
-          proxyPort = proxyIP.slice(lastColonIndex + 1);
-          proxyIP = proxyIP.slice(0, lastColonIndex);
+        if (pip.includes("]:")) {
+          let lastColonIndex = pip.lastIndexOf(":");
+          pxPort = pip.slice(lastColonIndex + 1);
+          pip = pip.slice(0, lastColonIndex);
         } else {
-          const match = proxyIP.match(/^(.*?)(?::(\d+))?$/);
-          proxyIP = match[1];
-          let proxyPort = match[2] || "443";
-          console.log("IP:", proxyIP, "Port:", proxyPort);
+          const match = pip.match(/^(.*?)(?::(\d+))?$/);
+          pip = match[1];
+          let pxPort = match[2] || "443";
+          console.log("IP:", pip, "Port:", pxPort);
         }
       }
-      console.log("ProxyIP:", proxyIP);
-      console.log("ProxyPort:", proxyPort);
+      console.log("pip:", pip);
+      console.log("pxPort:", pxPort);
       CDNIP = env.cdnip || CDNIP;
       IP1 = env.ip1 || IP1;
       IP2 = env.ip2 || IP2;
@@ -183,11 +183,11 @@ export default {
         const url = new URL(request.url);
         switch (url.pathname) {
           case `/${userID}`: {
-            const vlessConfig = getvlessConfig(
+            const vlsConfig = getvlsConfig(
               userID,
               request.headers.get("Host")
             );
-            return new Response(`${vlessConfig}`, {
+            return new Response(`${vlsConfig}`, {
               status: 200,
               headers: {
                 "Content-Type": "text/html;charset=utf-8",
@@ -250,7 +250,7 @@ export default {
           }
           default:
             // return new Response('Not found', { status: 404 });
-            // For any other path, reverse proxy to 'ramdom website' and return the original response, caching it in the process
+            // For any other path, reverse px to 'ramdom website' and return the original response, caching it in the process
             if (cn_hostnames.includes("")) {
               return new Response(JSON.stringify(request.cf, null, 4), {
                 status: 200,
@@ -269,20 +269,20 @@ export default {
               "referer",
               "https://www.google.com/search?q=edtunnel"
             );
-            // Use fetch to proxy the request to 15 different domains
-            const proxyUrl =
+            // Use fetch to px the request to 15 different domains
+            const pxUrl =
               "https://" + randomHostname + url.pathname + url.search;
-            let modifiedRequest = new Request(proxyUrl, {
+            let modifiedRequest = new Request(pxUrl, {
               method: request.method,
               headers: newHeaders,
               body: request.body,
               redirect: "manual",
             });
-            const proxyResponse = await fetch(modifiedRequest, {
+            const pxResponse = await fetch(modifiedRequest, {
               redirect: "manual",
             });
             // Check for 302 or 301 redirect status and return an error response
-            if ([301, 302].includes(proxyResponse.status)) {
+            if ([301, 302].includes(pxResponse.status)) {
               return new Response(
                 `Redirects to ${randomHostname} are not allowed.`,
                 {
@@ -291,26 +291,26 @@ export default {
                 }
               );
             }
-            // Return the response from the proxy server
-            return proxyResponse;
+            // Return the response from the px server
+            return pxResponse;
         }
       } else {
         if (url.pathname.includes("/pyip=")) {
           const tmp_ip = url.pathname.split("=")[1];
           if (isValidIP(tmp_ip)) {
-            proxyIP = tmp_ip;
-            if (proxyIP.includes("]:")) {
-              let lastColonIndex = proxyIP.lastIndexOf(":");
-              proxyPort = proxyIP.slice(lastColonIndex + 1);
-              proxyIP = proxyIP.slice(0, lastColonIndex);
-            } else if (!proxyIP.includes("]:") && !proxyIP.includes("]")) {
-              [proxyIP, proxyPort = "443"] = proxyIP.split(":");
+            pip = tmp_ip;
+            if (pip.includes("]:")) {
+              let lastColonIndex = pip.lastIndexOf(":");
+              pxPort = pip.slice(lastColonIndex + 1);
+              pip = pip.slice(0, lastColonIndex);
+            } else if (!pip.includes("]:") && !pip.includes("]")) {
+              [pip, pxPort = "443"] = pip.split(":");
             } else {
-              proxyPort = "443";
+              pxPort = "443";
             }
           }
         }
-        return await vlessOverWSHandler(request);
+        return await vlsOverWSHandler(request);
       }
     } catch (err) {
       /** @type {Error} */ let e = err;
@@ -328,7 +328,7 @@ function isValidIP(ip) {
  *
  * @param {any} request
  */
-async function vlessOverWSHandler(request) {
+async function vlsOverWSHandler(request) {
   /** @type {any} */
   // @ts-ignore
   const webSocketPair = new WebSocketPair();
@@ -398,8 +398,8 @@ async function vlessOverWSHandler(request) {
             if (portRemote === 53) {
               isDns = true;
             } else {
-              // controller.error('UDP proxy only enable for DNS which is port 53');
-              throw new Error("UDP proxy only enable for DNS which is port 53"); // cf seems has bug, controller.error will not end stream
+              // controller.error('UDP px only enable for DNS which is port 53');
+              throw new Error("UDP px only enable for DNS which is port 53"); // cf seems has bug, controller.error will not end stream
               return;
             }
           }
@@ -506,11 +506,11 @@ async function handleTCPOutBound(
       address = `${atob("d3d3Lg==")}${address}${atob("LnNzbGlwLmlv")}`;
     /** @type {any} */
 
-    const shouldUseProxyIP = proxydomains.some((domain) =>
+    const shouldUsepip = pxdomains.some((domain) =>
       isDomainMatch(address, domain)
     );
-    if (shouldUseProxyIP) {
-      address = proxyIP;
+    if (shouldUsepip) {
+      address = pip;
     }
 
     const tcpSocket = connect({
@@ -528,8 +528,8 @@ async function handleTCPOutBound(
   // if the cf connect tcp socket have no incoming data, we retry to redirect ip
   async function retry() {
     const tcpSocket = await connectAndWrite(
-      proxyIP || addressRemote,
-      proxyPort || portRemote
+      pip || addressRemote,
+      pxPort || portRemote
     );
     // no matter retry success or not, close websocket
     tcpSocket.closed
@@ -1004,10 +1004,10 @@ async function handleUDPOutBound(webSocket, cloudflareResponseHeader, log) {
  * @param {string | null} hostName
  * @returns {string}
  */
-function getvlessConfig(userID, hostName) {
-  const wvlessws = `\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${CDNIP}:8880?encryption=none&security=none&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#${hostName}`;
-  const pvlesswstls = `\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${CDNIP}:8443?encryption=none&security=tls&type=ws&host=${hostName}&sni=${hostName}&fp=random&path=%2F%3Fed%3D2560#${hostName}`;
-  const note = `阿杰鲁博客地址：https://ajie.lu\n阿杰鲁YouTube频道：https://www.youtube.com/@zaunist\n阿杰鲁TG电报群组：https://t.me/zaunist\n\nProxyIP全局运行中：${proxyIP}:${proxyPort}`;
+function getvlsConfig(userID, hostName) {
+  const wvlsws = `\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${CDNIP}:8880?encryption=none&security=none&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#${hostName}`;
+  const pvlswstls = `\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${CDNIP}:8443?encryption=none&security=tls&type=ws&host=${hostName}&sni=${hostName}&fp=random&path=%2F%3Fed%3D2560#${hostName}`;
+  const note = `阿杰鲁博客地址：https://ajie.lu\n阿杰鲁YouTube频道：https://www.youtube.com/@zaunist\n阿杰鲁TG电报群组：https://t.me/zaunist\n\npip全局运行中：${pip}:${pxPort}`;
   const ty = `https://${hostName}/${userID}/ty`;
   const cl = `https://${hostName}/${userID}/cl`;
   const sb = `https://${hostName}/${userID}/sb`;
@@ -1015,11 +1015,11 @@ function getvlessConfig(userID, hostName) {
   const pcl = `https://${hostName}/${userID}/pcl`;
   const psb = `https://${hostName}/${userID}/psb`;
 
-  const wkvlessshare = btoa(
+  const wkvlsshare = btoa(
     `\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP1}:${PT1}?encryption=none&security=none&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V1_${IP1}_${PT1}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP2}:${PT2}?encryption=none&security=none&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V2_${IP2}_${PT2}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP3}:${PT3}?encryption=none&security=none&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V3_${IP3}_${PT3}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP4}:${PT4}?encryption=none&security=none&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V4_${IP4}_${PT4}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP5}:${PT5}?encryption=none&security=none&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V5_${IP5}_${PT5}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP6}:${PT6}?encryption=none&security=none&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V6_${IP6}_${PT6}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP7}:${PT7}?encryption=none&security=none&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V7_${IP7}_${PT7}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP8}:${PT8}?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V8_${IP8}_${PT8}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP9}:${PT9}?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V9_${IP9}_${PT9}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP10}:${PT10}?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V10_${IP10}_${PT10}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP11}:${PT11}?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V11_${IP11}_${PT11}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP12}:${PT12}?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V12_${IP12}_${PT12}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP13}:${PT13}?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V13_${IP13}_${PT13}`
   );
 
-  const pgvlessshare = btoa(
+  const pgvlsshare = btoa(
     `\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP8}:${PT8}?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V8_${IP8}_${PT8}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP9}:${PT9}?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V9_${IP9}_${PT9}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP10}:${PT10}?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V10_${IP10}_${PT10}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP11}:${PT11}?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V11_${IP11}_${PT11}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP12}:${PT12}?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V12_${IP12}_${PT12}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP13}:${PT13}?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V13_${IP13}_${PT13}`
   );
 
@@ -1080,8 +1080,8 @@ ${displayHtml}
 				<tbody>
 					<tr>
 						<td class="limited-width">关闭了TLS加密，无视域名阻断</td>
-						<td class="limited-width">${wvlessws}</td>
-						<td><button class="btn btn-primary" onclick="copyToClipboard('${wvlessws}')">点击复制链接</button></td>
+						<td class="limited-width">${wvlsws}</td>
+						<td><button class="btn btn-primary" onclick="copyToClipboard('${wvlsws}')">点击复制链接</button></td>
 					</tr>
 				</tbody>
 			</table>
@@ -1111,8 +1111,8 @@ ${displayHtml}
 				<tbody>
 					<tr>
 						<td class="limited-width">启用了TLS加密，<br>如果客户端支持分片(Fragment)功能，建议开启，防止域名阻断</td>
-						<td class="limited-width">${pvlesswstls}</td>	
-						<td><button class="btn btn-primary" onclick="copyToClipboard('${pvlesswstls}')">点击复制链接</button></td>
+						<td class="limited-width">${pvlswstls}</td>	
+						<td><button class="btn btn-primary" onclick="copyToClipboard('${pvlswstls}')">点击复制链接</button></td>
 					</tr>
 				</tbody>
 			</table>
@@ -1146,7 +1146,7 @@ ${displayHtml}
 					</thead>
 					<tbody>
 						<tr>
-							<td><button class="btn btn-primary" onclick="copyToClipboard('${wkvlessshare}')">点击复制链接</button></td>
+							<td><button class="btn btn-primary" onclick="copyToClipboard('${wkvlsshare}')">点击复制链接</button></td>
 						</tr>
 					</tbody>
 				</table>
@@ -1229,8 +1229,8 @@ ${displayHtml}
 				<tbody>
 					<tr>
 						<td class="limited-width">启用了TLS加密，<br>如果客户端支持分片(Fragment)功能，可开启，防止域名阻断</td>
-						<td class="limited-width">${pvlesswstls}</td>
-						<td><button class="btn btn-primary" onclick="copyToClipboard('${pvlesswstls}')">点击复制链接</button></td>
+						<td class="limited-width">${pvlswstls}</td>
+						<td><button class="btn btn-primary" onclick="copyToClipboard('${pvlswstls}')">点击复制链接</button></td>
 					</tr>
 				</tbody>
 			</table>
@@ -1264,7 +1264,7 @@ ${displayHtml}
 					</thead>
 					<tbody>
 						<tr>
-							<td><button class="btn btn-primary" onclick="copyToClipboard('${pgvlessshare}')">点击复制链接</button></td>
+							<td><button class="btn btn-primary" onclick="copyToClipboard('${pgvlsshare}')">点击复制链接</button></td>
 						</tr>
 					</tbody>
 				</table>
@@ -1323,10 +1323,10 @@ ${displayHtml}
 }
 
 function gettyConfig(userID, hostName) {
-  const vlessshare = btoa(
+  const vlsshare = btoa(
     `\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP1}:${PT1}?encryption=none&security=none&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V1_${IP1}_${PT1}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP2}:${PT2}?encryption=none&security=none&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V2_${IP2}_${PT2}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP3}:${PT3}?encryption=none&security=none&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V3_${IP3}_${PT3}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP4}:${PT4}?encryption=none&security=none&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V4_${IP4}_${PT4}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP5}:${PT5}?encryption=none&security=none&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V5_${IP5}_${PT5}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP6}:${PT6}?encryption=none&security=none&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V6_${IP6}_${PT6}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP7}:${PT7}?encryption=none&security=none&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V7_${IP7}_${PT7}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP8}:${PT8}?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V8_${IP8}_${PT8}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP9}:${PT9}?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V9_${IP9}_${PT9}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP10}:${PT10}?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V10_${IP10}_${PT10}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP11}:${PT11}?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V11_${IP11}_${PT11}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP12}:${PT12}?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V12_${IP12}_${PT12}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP13}:${PT13}?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V13_${IP13}_${PT13}`
   );
-  return `${vlessshare}`;
+  return `${vlsshare}`;
 }
 
 function getclConfig(userID, hostName) {
@@ -1536,7 +1536,7 @@ proxies:
     headers:
       Host: ${hostName}
 
-proxy-groups:
+px-groups:
 - name: 负载均衡
   type: load-balance
   url: http://www.gstatic.com/generate_204
@@ -1627,7 +1627,7 @@ function getsbConfig(userID, hostName) {
 	  "dns": {
 		"servers": [
 		  {
-			"tag": "proxydns",
+			"tag": "pxdns",
 			"address": "tls://8.8.8.8/dns-query",
 			"detour": "select"
 		  },
@@ -1649,7 +1649,7 @@ function getsbConfig(userID, hostName) {
 		  },
 		  {
 			"clash_mode": "Global",
-			"server": "proxydns"
+			"server": "pxdns"
 		  },
 		  {
 			"clash_mode": "Direct",
@@ -1661,7 +1661,7 @@ function getsbConfig(userID, hostName) {
 		  },
 		  {
 			"rule_set": "geosite-geolocation-!cn",
-			"server": "proxydns"
+			"server": "pxdns"
 		  },
 		  {
 			"rule_set": "geosite-geolocation-!cn",
@@ -1678,7 +1678,7 @@ function getsbConfig(userID, hostName) {
 		  "inet6_range": "fc00::/18"
 		},
 		"independent_cache": true,
-		"final": "proxydns"
+		"final": "pxdns"
 	  },
 	  "inbounds": [
 		{
@@ -2100,10 +2100,10 @@ function getsbConfig(userID, hostName) {
 }
 
 function getptyConfig(userID, hostName) {
-  const vlessshare = btoa(
+  const vlsshare = btoa(
     `\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP8}:${PT8}?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V8_${IP8}_${PT8}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP9}:${PT9}?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V9_${IP9}_${PT9}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP10}:${PT10}?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V10_${IP10}_${PT10}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP11}:${PT11}?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V11_${IP11}_${PT11}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP12}:${PT12}?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V12_${IP12}_${PT12}\n\u0076\u006c\u0065\u0073\u0073\u003A//${userID}\u0040${IP13}:${PT13}?encryption=none&security=tls&sni=${hostName}&fp=randomized&type=ws&host=${hostName}&path=%2F%3Fed%3D2560#CF_V13_${IP13}_${PT13}`
   );
-  return `${vlessshare}`;
+  return `${vlsshare}`;
 }
 
 function getpclConfig(userID, hostName) {
@@ -2221,7 +2221,7 @@ proxies:
     headers:
       Host: ${hostName}
 
-proxy-groups:
+px-groups:
 - name: 负载均衡
   type: load-balance
   url: http://www.gstatic.com/generate_204
@@ -2291,7 +2291,7 @@ function getpsbConfig(userID, hostName) {
 		  "dns": {
 			"servers": [
 			  {
-				"tag": "proxydns",
+				"tag": "pxdns",
 				"address": "tls://8.8.8.8/dns-query",
 				"detour": "select"
 			  },
@@ -2313,7 +2313,7 @@ function getpsbConfig(userID, hostName) {
 			  },
 			  {
 				"clash_mode": "Global",
-				"server": "proxydns"
+				"server": "pxdns"
 			  },
 			  {
 				"clash_mode": "Direct",
@@ -2325,7 +2325,7 @@ function getpsbConfig(userID, hostName) {
 			  },
 			  {
 				"rule_set": "geosite-geolocation-!cn",
-				"server": "proxydns"
+				"server": "pxdns"
 			  },
 			  {
 				"rule_set": "geosite-geolocation-!cn",
@@ -2342,7 +2342,7 @@ function getpsbConfig(userID, hostName) {
 			  "inet6_range": "fc00::/18"
 			},
 			"independent_cache": true,
-			"final": "proxydns"
+			"final": "pxdns"
 		  },
 		  "inbounds": [
 			{
